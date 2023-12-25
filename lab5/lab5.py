@@ -1,49 +1,95 @@
-import numpy as np
-import matplotlib.pyplot as plt
+package org.example;
 
-A_matrix = np.array([[0.7, -0.3, -0.2],
-                     [-0.2, 0.2, -0.7],
-                     [-0.5, 0.1, 2]])
-A = np.eye(3) - A_matrix
-f_vector = np.array([-1, -3, 8])
-actual_solution = [-3.07018, 1.14035, 2.45614]
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 
-def solve(A, f, num_chains, chain_length):
-    n = A.shape[0]
-    x = np.zeros(n)
+public class MonteCarloSimulation {
 
-    for j in range(n):
-        for _ in range(num_chains):
-            weight = 1
-            state_prev = j
-            state_new = 0
-            x[j] += f[j]
+    public static void main(String[] args) {
+        double[][] AMatrix =
+                {{0.7, -0.3, -0.2},
+                {-0.2, 0.2, -0.7},
+                {-0.5, 0.1, 2}};
+        double[] fVector = {-1, -3, 8};
+        double[] actualSolution = {-3.07018, 1.14035, 2.45614};
 
-            for _ in range(chain_length):
-                state_new = np.random.choice(n)
-                weight *= n * A[state_prev][state_new]
-                x[j] += weight * f[state_new]
-                state_prev = state_new
+        Map<Pair<Integer, Integer>, Double> results = new HashMap<>();
 
-    return x / num_chains
+        int[] numChainsSet = {10, 30, 60, 100};
+        int[] chainLengthSet = {10, 100, 300, 1000};
 
-num_chains_set = [10, 30, 60, 100]
-chain_length_set = [10, 100, 300, 1000]
+        for (int numChains : numChainsSet) {
+            for (int chainLength : chainLengthSet) {
+                double[] computedSolution = solve(AMatrix, fVector, numChains, chainLength);
+                System.out.println(numChains + " " + chainLength);
+                System.out.println("Computed: " + arrayToString(computedSolution));
+                System.out.println("Actual: " + arrayToString(actualSolution) + "\n");
 
-results = {}
+                double error = computeError(computedSolution, actualSolution);
+                results.put(new Pair<>(numChains, chainLength), error);
+            }
+        }
+    }
 
-for num_chains in num_chains_set:
-    for chain_length in chain_length_set:
-        computed_solution = solve(A, f_vector, num_chains, chain_length)
-        print(f'{num_chains} {chain_length}')
-        print(f'Computed: {computed_solution}')
-        print(f'Actual: {actual_solution}\n')
+    private static double[] solve(double[][] A, double[] f, int numChains, int chainLength) {
+        int n = A.length;
+        double[] x = new double[n];
 
-        error = np.linalg.norm(computed_solution - actual_solution)
-        results[(num_chains, chain_length)] = error
+        for (int j = 0; j < n; j++) {
+            for (int k = 0; k < numChains; k++) {
+                double weight = 1;
+                int statePrev = j;
+                int stateNew = 0;
+                x[j] += f[j];
 
-plt.figure(figsize=(14, 7))
+                Random random = new Random();
 
-for num_chains in num_chains_set:
-    errors = [results[(num_chains, cl)] for cl in chain_length_set]
-    plt.plot(chain_length_set, errors, label=f'Num Chains: {num_chains}')
+                for (int l = 0; l < chainLength; l++) {
+                    stateNew = random.nextInt(n);
+                    weight *= n * A[statePrev][stateNew];
+                    x[j] += weight * f[stateNew];
+                    statePrev = stateNew;
+                }
+            }
+            x[j] /= numChains;
+        }
+
+        return x;
+    }
+
+    private static double computeError(double[] computedSolution, double[] actualSolution) {
+        double error = 0;
+        for (int i = 0; i < computedSolution.length; i++) {
+            error += Math.pow(computedSolution[i] - actualSolution[i], 2);
+        }
+        return Math.sqrt(error);
+    }
+
+    private static String arrayToString(double[] array) {
+        StringBuilder sb = new StringBuilder("[");
+        for (double value : array) {
+            sb.append(value).append(", ");
+        }
+        sb.delete(sb.length() - 2, sb.length()).append("]");
+        return sb.toString();
+    }
+
+    static class Pair<K, V> {
+        private final K key;
+        private final V value;
+
+        public Pair(K key, V value) {
+            this.key = key;
+            this.value = value;
+        }
+
+        public K getKey() {
+            return key;
+        }
+
+        public V getValue() {
+            return value;
+        }
+    }
+}
